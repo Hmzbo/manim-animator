@@ -167,20 +167,42 @@ Rate functions worth knowing: `smooth` (default), `linear`, `rush_into`, `rush_f
 ## Scene types and camera
 
 ```python
-class Zoom(Scene):                       # MovingCameraScene
+class Lesson(MovingCameraScene):
     def construct(self):
-        self.camera.frame.save_state()
-        detail = ...
-        self.play(self.camera.frame.animate.move_to(detail).set(width=6))
-        self.play(Restore(self.camera.frame))
+        frame = self.camera.frame
+        frame.save_state()
+
+        # build the core visual ONCE - it stays for the whole video
+        axes = Axes(...)
+        curve = axes.plot(lambda x: x**2 / 4, color=BLUE)
+        self.play(Create(axes), Create(curve))
+
+        # region A: main plot
+        self.play(frame.animate.move_to(axes.c2p(0, 1)).set(width=12))
+        ...beats on the curve...
+
+        # region B: pan aside to a derivation zone, work, clean up
+        work = MathTex("m = \\frac{dy}{dx}").move_to(axes.c2p(6, 1))
+        self.play(frame.animate.move_to(work).set(width=9))
+        self.play(Write(work))
+        self.play(FadeOut(work))
+
+        # back home - curve still there, no rebuild
+        self.play(Restore(frame))
+        ...continue on the same objects, e.g. overlay f'...
 ```
 
-- `MovingCameraScene` - zooming/panning onto details.
+MovingCameraScene rules: pan with intent between planned regions; `set(width=...)`
+zooms out when a view gets full; reposition captions after each pan; FadeOut
+stale mobjects continuously; never rebuild what you can revisit.
+
+- `MovingCameraScene` - region panning, zoom-to-detail, zoom-out-to-fit; ideal
+  when multiple beats share one core visual.
 - `ZoomedScene` - picture-in-picture magnifier inset.
 - `ThreeDScene` - see below.
 - `VectorScene` / `LinearTransformationScene(apply_method_config=...)` - linear algebra epics;
   call `self.setup()` first, use `self.add_vector(...)`, `self.apply_matrix(matrix)`.
-- Plain `Scene` covers everything else; default choice.
+- Plain `Scene` covers everything else.
 
 ## 3D
 
@@ -202,6 +224,20 @@ class Act3D(ThreeDScene):
 
 Also: `Cube`, `Sphere`, `Cylinder`, `Cone`, `Torus`, `Dot3D`, `Arrow3D`, `Line3D`,
 `Polyhedron`. Keep 3D acts short; renders are much slower than 2D.
+
+Fixed-in-frame text (equations/captions in 3D scenes):
+
+```python
+eq = MathTex(r"\nabla f = \lambda \nabla g")
+self.add_fixed_in_frame_mobjects(eq)   # screen-aligned, ignores camera
+eq.to_edge(DOWN, buff=0.4)
+```
+
+- ANY mobject that appears as a TRANSFORM TARGET (`ReplacementTransform`,
+  `TransformMatchingTex`, `Transform(...)` second argument) must ALSO be
+  registered fixed-in-frame, or it renders tilted in world space.
+- Safest pattern for 3D text changes: `FadeOut(old)` -> register new -> `FadeIn(new)`.
+  Avoid transforming fixed-in-frame mobjects when a fade would do.
 
 ## Graphs, tables, data
 

@@ -13,14 +13,41 @@ Read when a render fails or before writing tricky scenes. Ordered by frequency.
 
 Raw strings always: `r"\frac{a}{b}"`, never plain strings with backslashes.
 
+## Tex vs Text constructor arguments
+
+| Symptom | Fix |
+|---|---|
+| `Mobject.__init__() got an unexpected keyword argument 'slant'` (or `weight`) | `slant`/`weight`/`gradient` are Pango `Text`-only. `Tex`/`MathTex` reject them. Use `Text(..., slant=ITALIC)` or LaTeX italics `r"\textit{...}"` |
+
 ## Layout problems
 
 | Symptom | Fix |
 |---|---|
 | Mobjects cut off at edges | Frame is ~14.22 x 8 units. `.scale_to_fit_width(12)` groups; reduce `font_size`; shrink axes `x_length/y_length` |
+| Text overlapping the plot or other text | Use fixed zones: title band top, caption band bottom, side panels for derivations. Text NEVER floats over content. After positioning, check the bounding box: `m.get_critical_point(DR)[1] > -config.frame_height/2 + 0.4` |
+| Scene too full at the payoff (accumulated labels, equations) | Fade out finished mobjects when their beat ends; zoom out via `self.camera.frame.animate.set(width=...)` (MovingCameraScene); or scale the group down |
 | Overlaps | `.arrange(DOWN, buff=0.4)` VGroups; `.next_to(..., buff=0.3)`; verify visually in the draft pass |
 | Label far from its object | Chain positioning off the object: `label.next_to(curve, UP)`, not absolute coords |
 | New mobject invisible | Forgot `self.add(m)` / never played an entrance animation |
+
+**Mandatory frame inspection** (part of the Phase 3 draft review, not optional):
+after a clean draft render, extract frames at start/middle/end of each scene plus
+every beat where text or objects enter:
+
+```bash
+ffmpeg -y -ss <seconds> -i media/videos/<qual>/<Scene>.mp4 -frames:v 1 frame.png
+```
+
+Then LOOK at each frame: edge cut-offs, overlaps, stale leftovers, contrast.
+Fix at `-ql` and re-render before any `-qh` render. Delete review frames before
+delivery.
+
+## ThreeDScene: fixed-in-frame text
+
+| Symptom | Fix |
+|---|---|
+| Equation/caption appears tilted or floating in 3D space | It was never registered: call `self.add_fixed_in_frame_mobjects(m)` at creation |
+| Transform target renders in world space / ghost duplicates appear | Transform TARGETS must also be registered fixed-in-frame. Prefer `FadeOut(old)` + register + `FadeIn(new)` over transforming fixed-in-frame mobjects |
 
 ## Animation logic
 

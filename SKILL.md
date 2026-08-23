@@ -5,7 +5,7 @@ license: MIT
 compatibility: Requires uv (https://docs.astral.sh/uv) on PATH. First render may download packages into the uv cache (network needed once). Optional LaTeX for MathTex; optional ffmpeg for stitching.
 metadata:
   author: manim-animator
-  version: "1.0.0"
+  version: "1.1.0"
 ---
 
 # Manim Animator
@@ -76,13 +76,38 @@ the topic into exactly one complexity tier:
 For T1/T2: show the plan inline in your response, then continue immediately.
 For T3: show the plan and stop until the user approves.
 
+**Choose the scene architecture** (details and examples in creative-direction.md):
+
+- **Single plain `Scene`** - one compact topic built on one visual object
+  (Pythagoras: everything happens on one triangle). No transitions.
+- **Single `MovingCameraScene`** - later beats reuse or extend the same core
+  visual (derivative: hook on the curve, tangent limit on the SAME curve, then
+  f' overlaid on it). Build once, pan/zoom the camera between regions, fade
+  stale mobjects, keep going.
+- **Multiple `Scene` classes** - genuinely independent tableaus, or acts that
+  need different scene types. Default for long multi-act stories and 3D epics.
+
+**Content fidelity rules** (violations of these are failed plans):
+
+- The on-screen title mirrors the user's requested topic, not merely a
+  technique name. Asked for "solving convex optimization with an equality
+  constraint using Lagrange multipliers"? Then the title says that, not just
+  "Lagrange multipliers".
+- State the problem formally (words + notation) and explain it BEFORE drawing
+  geometric conclusions from it. The hook may tease; it may not replace the
+  statement. Viewers new to the topic must be able to follow: statement ->
+  concept -> mechanism -> payoff.
+- If the topic is a method, show the method's steps, never just its output
+  (Lagrange: form L = f - lambda*g, derive grad L = 0, THEN solve the system).
+
 Write the full storyboard to `<cwd>/animations/<slug>/plan.md` using the template
 in creative-direction.md. A complete plan specifies:
 
 - Title, one-sentence narrative arc, target length estimate
+- Chosen architecture (single Scene / single MovingCameraScene / multi-class)
 - Scene list: for each scene - purpose, visual beats in order, Manim techniques
   named concretely (e.g. `TransformMatchingTex`, `get_riemann_rectangles`,
-  `MovingCameraScene.frame.animate`), approximate duration
+  `self.camera.frame.animate`), approximate duration
 - Color palette (pick one palette from creative-direction.md and stick to it)
 - Transitions and recurring motifs between scenes
 
@@ -98,15 +123,24 @@ Before writing nontrivial scenes, consult:
 Coding standards:
 
 - `from manim import *` at the top.
-- Default architecture: ONE `Scene` class per narrative act, with
-  `self.next_section("beat-name")` separating beats inside an act. This yields a single
-  chaptered final video with zero stitching. Split into multiple classes only when the
-  video has more than ~4 acts, any act exceeds ~90 seconds, or the user asks for
-  independent files.
+- Implement the architecture chosen in the plan (single `Scene`, single
+  `MovingCameraScene`, or multiple classes). Within any class, separate beats
+  with `self.next_section("beat-name")`.
 - Define constants at top: palette colors, font sizes, helper functions reused across acts.
 - Every act ends by fading everything out (`self.play(*[FadeOut(m) for m in self.mobjects])`).
 - Prefer `run_time=` and deliberate `self.wait(0.5..1)` pauses over rushed cuts.
 - No narration audio in v1; make visuals self-explanatory with concise on-screen labels.
+
+Layout discipline (the #1 source of unusable renders - treat as law):
+
+- Reserve fixed zones: title band along the top (~0.7 units), caption band
+  along the bottom (~0.7 units), content in the middle, side panels in their
+  own half. Text NEVER floats on top of the plot.
+- Keep >= 0.4 units of margin from every frame edge. After positioning any
+  text, verify its bounding box fits (`mobj.get_critical_point(DR)[1] > -config.frame_height/2 + 0.4`, etc.).
+- Out of space? Fix in this order: reposition into a free zone -> scale down
+  (`scale_to_fit_width`) -> zoom the camera out (`frame.animate.set(width=...)`,
+  MovingCameraScene only). Never cram.
 
 Gate before rendering (catches syntax errors cheaply):
 
@@ -134,6 +168,25 @@ Success criteria: command exits 0, a `.mp4` exists per rendered class under
 `media/videos/<quality>/`, and stdout shows `Rendered ... Played ... animations`.
 On failure: read the traceback, cross-check troubleshooting.md, fix, re-render.
 Loop until clean. Never advance to Phase 4 with a failing draft.
+
+**Visual frame review (mandatory, never skip):** a clean render is not a correct
+video. Extract frames at risky beats and inspect them:
+
+```bash
+ffmpeg -y -ss <seconds> -i media/videos/<qual>/<Scene>.mp4 -frames:v 1 frame_<Scene>_<t>.png
+```
+
+Take 2-3 frames per scene (start/middle/end, plus every beat where objects or
+text enter). Check each frame for:
+
+- text or objects cut off at the frame edge,
+- text overlapping the plot or other text,
+- stale leftovers from earlier beats (mobjects that should have faded),
+- unreadable contrast or too-small text.
+
+Fix every finding, re-render the affected scenes, re-review. Layout bugs cost
+seconds at `-ql` and a wasted Full HD render at `-qh`. Delete the review frames
+before delivery.
 
 ## Phase 4: Final render
 
@@ -195,7 +248,10 @@ Never ship a revision straight to `-qh` without a passing draft pass.
 
 - uv only. No pip, no conda, no bare `python` outside `uv run`.
 - Always preflight before planning; always plan before coding.
-- Always draft-render (`-ql`) before any final render (`-qh`).
+- Always draft-render (`-ql`) before any final render (`-qh`), and always pass
+  the visual frame review before any final render.
+- The on-screen title mirrors the user's requested topic; the problem is stated
+  before it is visualized; methods are shown step by step, not just their result.
 - Default deliverable is 1080p60 (`-qh`) unless the user says otherwise.
 - Never hand-edit anything inside `media/`; regenerate via renders.
 - One project folder per topic under `<cwd>/animations/<slug>/`.

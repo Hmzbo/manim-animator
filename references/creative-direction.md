@@ -42,15 +42,49 @@ Multi-act story with escalating insight. Requires user approval of the plan befo
 - Linear transformations epic: grid transforming under matrices, determinant as area.
 - Target length: 3+ minutes.
 
+## Architecture selection
+
+Choose the scene architecture during planning - it shapes the entire codebase.
+Multi-scene is NOT the automatic default. Ask: **do later beats reuse or extend
+the same core visual?**
+
+| Situation | Architecture |
+|---|---|
+| One compact topic on one visual object (Pythagoras: everything happens on one triangle) | ONE plain `Scene`, continuous build, no scene transitions |
+| Later beats revisit or extend the same core visual (derivative: hook on the curve, tangent limit on the SAME curve, then f' overlaid on it) | ONE `MovingCameraScene`: build once, pan/zoom between regions, fade stale mobjects, keep working |
+| Genuinely independent tableaus, acts needing different scene types (2D vs `ThreeDScene`), or very long videos | Multiple `Scene` classes + stitch |
+
+MovingCameraScene discipline - this is where videos get cluttered, so plan hard:
+
+- Divide the frame into explicit regions BEFORE coding: main plot center,
+  derivation zone to one side, summary zone elsewhere. The plan names them.
+- Pan with intent: `self.camera.frame.animate.move_to(region).set(width=...)`;
+  `save_state()` early and `Restore(self.camera.frame)` to return home.
+- Captions and labels must make sense in the CURRENT view; reposition them
+  after each pan, or anchor them to the region they describe.
+- Declutter continuously: FadeOut whatever the current beat no longer needs
+  instead of letting it pile up.
+- When a view gets full, zoom OUT (`frame.animate.set(width=...)`) or remove
+  things - never cram more objects into a fixed view.
+
 ## Narrative arc
 
 Even a 40-second clip benefits from a micro-arc:
 
 1. **Hook** (5-10%): pose the question visually. A paradox, a shape, an unfinished equation.
-2. **Setup** (15-25%): establish objects and notation the viewer needs.
-3. **Build** (40-55%): the mechanism, step by step. One transformation per beat.
+2. **Statement** (10-20%): the problem itself, in words + notation, explained.
+   The hook teases the question; the statement defines it. Never draw
+   conclusions from a problem the viewer has not been shown.
+3. **Build** (35-50%): the mechanism, step by step. One transformation per beat.
+   If the topic is a method, the method's own steps belong here (form the
+   Lagrangian, set grad L = 0, solve) - showing only the final equations is a
+   failed plan.
 4. **Payoff** (15-20%): the result lands; highlight what changed in understanding.
-5. **Recap** (5-10%, optional for T2/T3): compress the journey into one summary frame.
+5. **Recap** (5-10%, optional): compress the journey into one summary frame.
+
+**Title fidelity:** the on-screen title uses the user's requested topic
+wording, not a shorter technique name. "Solving a convex optimization problem
+with an equality constraint" - not just "Lagrange multipliers".
 
 ## Scene beats
 
@@ -81,6 +115,11 @@ These separate professional output from generic output:
    `ThreeDScene` only when dimensionality is the point.
 6. **Highlight language.** Choose consistent semantics: YELLOW = focus, RED = wrong/
    subtracted, GREEN = result/positive. Keep these meanings stable all video.
+7. **Layout zones.** Fixed bands, never violated: title along the top (~0.7
+   units), captions along the bottom (~0.7 units), content in the middle, side
+   panels in their own half. Text never sits on top of the plot. Keep >= 0.4
+   units margin from every frame edge and verify each text's bounding box.
+   Out of space? Reposition -> scale down -> zoom the camera out. In that order.
 
 ### Palettes (dark background default)
 
@@ -113,24 +152,27 @@ Map topic type to the Manim toolkit (snippets in manim-api.md):
 ## plan.md template
 
 ```markdown
-# <Video Title>
+# <Video Title - mirrors the user's requested topic>
 
 ## Overview
 - Topic: <core concept>
 - Tier: T1 | T2 | T3
+- Architecture: single Scene | single MovingCameraScene | multi-class
 - Hook: <opening question/mystery>
+- Problem statement: <the formal statement, in words + notation, shown early>
 - Narrative arc: <2-3 sentences>
 - Estimated length: <N seconds/minutes>
 - Palette: <name> - bg <hex>, primary <hex>, secondary <hex>, accent <hex>
+- Layout zones: <e.g. title top band; plot center; derivation panel left; captions bottom>
 
 ## Act 1: <Act name>            [class Act1]
 Purpose: <what this act accomplishes>
 Beats:
 1. <beat description>          [technique: Write/Create/..., ~Ns]
 2. ...
-Transition out: <how>
+Transition out: <how / camera move>
 
-## Act 2: ...                   [class Act2]
+## Act 2: ...                   [class Act2 or camera region 2]
 ...
 
 ## Shared elements
