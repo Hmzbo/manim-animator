@@ -192,9 +192,25 @@ class Lesson(MovingCameraScene):
         ...continue on the same objects, e.g. overlay f'...
 ```
 
-MovingCameraScene rules: pan with intent between planned regions; `set(width=...)`
-zooms out when a view gets full; reposition captions after each pan; FadeOut
-stale mobjects continuously; never rebuild what you can revisit.
+MovingCameraScene rules - the frame is a mobject; its CENTER defines the view:
+
+- Frame facts (defaults): width 14.22 (X: center +/- 7.11), height 8.0
+  (Y: center +/- 4). 16:9 is ENFORCED - width and height are linked
+  (`height = width * 9/16`), so changing one moves the other. Keep the defaults
+  unless the user asks for a different aspect ratio, and always compute with
+  the runtime `frame.width` / `frame.height`.
+- Visible bounds at any moment: `center.x +/- width/2`, `center.y +/- height/2`.
+- Pan to a blank region by shifting the center exactly one frame dimension:
+  `frame.animate.shift(frame.width * RIGHT)` (or `* LEFT`, `frame.height * UP/DOWN`).
+  A shorter shift leaves old content visible - compute destination bounds
+  (`center +/- width/2, height/2`) before placing anything there.
+- `scale(k)` scales BOTH dimensions. Two regions one frame-width apart:
+  `frame.animate.scale(2)` then `shift((frame.width / 2) * LEFT)`;
+  `move_to(midpoint)` is the robust general form.
+- Zoom to detail: `move_to(point).set(width=5)`; `save_state()` early,
+  `Restore(self.camera.frame)` to return home.
+- Declutter continuously: FadeOut whatever the current region no longer needs.
+- Runnable versions of every pattern: `examples/camera_basics.py`.
 
 - `MovingCameraScene` - region panning, zoom-to-detail, zoom-out-to-fit; ideal
   when multiple beats share one core visual.

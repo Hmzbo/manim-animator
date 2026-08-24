@@ -49,6 +49,14 @@ delivery.
 | Equation/caption appears tilted or floating in 3D space | It was never registered: call `self.add_fixed_in_frame_mobjects(m)` at creation |
 | Transform target renders in world space / ghost duplicates appear | Transform TARGETS must also be registered fixed-in-frame. Prefer `FadeOut(old)` + register + `FadeIn(new)` over transforming fixed-in-frame mobjects |
 
+## Camera and placement math
+
+| Symptom | Fix |
+|---|---|
+| Old scene content still visible after a camera pan; new text collides with it | The pan was shorter than one frame dimension. Shift by `frame.width` / `frame.height` (defaults: 14.22 x 8.0, 16:9 enforced - the two are linked), or compute destination bounds (`center +/- width/2, height/2`) and fade leftovers before placing anything |
+| Dashed legs / braces / construction floats off the object it annotates | Points were eyeballed. Derive them parametrically from the object: `pa = start + t*(end-start)`, `corner = [pb[0], pa[1], 0]` - see `examples/canvas_math.py::RiseRunOnLine` |
+| Zoomed view cuts off previously placed text | `scale(k)` enlarges the view but the center stayed put; recenter with `move_to(midpoint)` or `shift((frame.width/2) * -direction)` after a full-width pan + `scale(2)` |
+
 ## Animation logic
 
 | Symptom | Fix |

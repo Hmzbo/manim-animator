@@ -5,7 +5,7 @@ license: MIT
 compatibility: Requires uv (https://docs.astral.sh/uv) on PATH. First render may download packages into the uv cache (network needed once). Optional LaTeX for MathTex; optional ffmpeg for stitching.
 metadata:
   author: manim-animator
-  version: "1.1.0"
+  version: "1.2.0"
 ---
 
 # Manim Animator
@@ -119,6 +119,8 @@ Before writing nontrivial scenes, consult:
 
 - [references/manim-api.md](references/manim-api.md) - curated capability catalog with tested snippets
 - [references/troubleshooting.md](references/troubleshooting.md) - pitfalls that waste render cycles
+- [examples/README.md](examples/README.md) - runnable scenes for camera math and
+  object placement, each fixing a real render bug. Copy their patterns.
 
 Coding standards:
 
@@ -126,6 +128,13 @@ Coding standards:
 - Implement the architecture chosen in the plan (single `Scene`, single
   `MovingCameraScene`, or multiple classes). Within any class, separate beats
   with `self.next_section("beat-name")`.
+- The frame is a mobject: its center defines the view. Defaults: 14.22 x 8.0
+  (X: +/-7.11, Y: +/-4), 16:9 enforced - width and height are linked, keep them
+  unless the user asks otherwise. Track every object's `get_center()`,
+  `width`, `height`, and bbox corners, and reason about placement
+  arithmetically (see `examples/canvas_math.py`). Pan only in whole-frame steps
+  (`frame.animate.shift(frame.width * RIGHT)`) and compute destination bounds
+  before placing text there (see `examples/camera_basics.py`).
 - Define constants at top: palette colors, font sizes, helper functions reused across acts.
 - Every act ends by fading everything out (`self.play(*[FadeOut(m) for m in self.mobjects])`).
 - Prefer `run_time=` and deliberate `self.wait(0.5..1)` pauses over rushed cuts.

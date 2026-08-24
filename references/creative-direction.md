@@ -56,6 +56,11 @@ the same core visual?**
 
 MovingCameraScene discipline - this is where videos get cluttered, so plan hard:
 
+- Pan in whole-frame steps (`frame.animate.shift(frame.width * RIGHT)` etc.;
+  defaults 14.22 x 8.0, 16:9 enforced) so regions are genuinely disjoint, and
+  compute the destination bounds (`center +/- width/2, height/2`) BEFORE
+  placing anything there - leftover content from the previous region is the
+  classic collision source.
 - Divide the frame into explicit regions BEFORE coding: main plot center,
   derivation zone to one side, summary zone elsewhere. The plan names them.
 - Pan with intent: `self.camera.frame.animate.move_to(region).set(width=...)`;
